@@ -1,26 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="190d1119-06be-422b-bb60-c8707df18e4f" name="Changes" comment="almost done">
-      <change afterPath="$PROJECT_DIR$/Main/0.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/0_info.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/1.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/1_info.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/2.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/2_info.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/3.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/3_info.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/4.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/4_info.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/5.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/5_info.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/6_info.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/exec.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Main/functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/Main/functions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Main/info.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Main/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Main/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Main/test.py" beforeDir="false" />
+    <list default="true" id="190d1119-06be-422b-bb60-c8707df18e4f" name="Changes" comment="making changes, going to ask for more input to make the process a little bit more fluid. The source site is too fluid to make fully automatic.">
+      <change afterPath="$PROJECT_DIR$/Main/10.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/10_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/11.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/11_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/6.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/7.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/7_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/8.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/8_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/9.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/9_info.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -76,7 +68,14 @@
       <option name="project" value="LOCAL" />
       <updated>1686422769865</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="making changes, going to ask for more input to make the process a little bit more fluid. The source site is too fluid to make fully automatic.">
+      <created>1687798617137</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1687798617137</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -84,7 +83,13 @@
       <map>
         <entry key="MAIN">
           <value>
-            <State />
+            <State>
+              <option name="CUSTOM_BOOLEAN_PROPERTIES">
+                <map>
+                  <entry key="Show.Git.Branches" value="true" />
+                </map>
+              </option>
+            </State>
           </value>
         </entry>
       </map>
@@ -93,7 +98,8 @@
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="almost done" />
-    <option name="LAST_COMMIT_MESSAGE" value="almost done" />
+    <MESSAGE value="making changes, going to ask for more input to make the process a little bit more fluid. The source site is too fluid to make fully automatic." />
+    <option name="LAST_COMMIT_MESSAGE" value="making changes, going to ask for more input to make the process a little bit more fluid. The source site is too fluid to make fully automatic." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
