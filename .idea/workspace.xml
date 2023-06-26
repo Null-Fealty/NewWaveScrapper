@@ -1,19 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="190d1119-06be-422b-bb60-c8707df18e4f" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/Main.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/chromedriver/LICENSE.chromedriver" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/chromedriver/chromedriver.exe" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/functions.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/info.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/main.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/test.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/NewWaveScrapper.iml" afterDir="false" />
+    <list default="true" id="190d1119-06be-422b-bb60-c8707df18e4f" name="Changes" comment="almost done">
+      <change afterPath="$PROJECT_DIR$/Main/0.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/0_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/1.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/1_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/2.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/2_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/3.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/3_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/4.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/4_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/5.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/5_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/6_info.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/exec.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Main/functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/Main/functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Main/info.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Main/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Main/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Main/test.py" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,12 +53,11 @@
     "ASKED_ADD_EXTERNAL_FILES": "true",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
     "last_opened_file_path": "C:/Users/---------/IdeaProjects/NewWaveScrapper",
     "project.structure.last.edited": "Project",
     "project.structure.proportion": "0.0",
     "project.structure.side.proportion": "0.0",
-    "settings.editor.selected.configurable": "project.propCompiler"
+    "settings.editor.selected.configurable": "org.jetbrains.plugins.github.ui.GithubSettingsConfigurable"
   }
 }]]></component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
@@ -63,6 +69,14 @@
       <option name="presentableId" value="Default" />
       <updated>1685728534233</updated>
     </task>
+    <task id="LOCAL-00001" summary="almost done">
+      <created>1686422769865</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1686422769865</updated>
+    </task>
+    <option name="localTasksCounter" value="2" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -78,5 +92,18 @@
   </component>
   <component name="VcsManagerConfiguration">
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+    <MESSAGE value="almost done" />
+    <option name="LAST_COMMIT_MESSAGE" value="almost done" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Main/functions.py</url>
+          <line>77</line>
+          <option name="timeStamp" value="11" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>
