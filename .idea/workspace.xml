@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="190d1119-06be-422b-bb60-c8707df18e4f" name="Changes" comment="making changes, going to ask for more input to make the process a little bit more fluid. The source site is too fluid to make fully automatic.">
-      <change afterPath="$PROJECT_DIR$/Main/Ladies_info.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Main/test_info.txt" afterDir="false" />
+    <list default="true" id="190d1119-06be-422b-bb60-c8707df18e4f" name="Changes" comment="works for the most part. Now each item is uploaded directly to shoppify, the only issue is that I havent loaded in any variance, so everything will only have one variant">
+      <change afterPath="$PROJECT_DIR$/Main/temp/1677229847a5416e22a9c80aff3b4323fd996ffc42_thumbnail_600x.jpg" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Main/temp/167722984975c0e05805dcf4a0d6893f1df5a8377e_thumbnail_600x.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Main/functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/Main/functions.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Main/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/Main/main.py" afterDir="false" />
@@ -43,6 +43,7 @@
     &quot;project.structure.last.edited&quot;: &quot;SDKs&quot;,
     &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
     &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
+    &quot;run.code.analysis.last.selected.profile&quot;: &quot;pProject Default&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;org.jetbrains.plugins.github.ui.GithubSettingsConfigurable&quot;
   }
 }</component>
@@ -76,7 +77,14 @@
       <option name="project" value="LOCAL" />
       <updated>1687798703925</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="works for the most part. Now each item is uploaded directly to shoppify, the only issue is that I havent loaded in any variance, so everything will only have one variant">
+      <created>1688064107822</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1688064107822</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -100,17 +108,40 @@
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="almost done" />
     <MESSAGE value="making changes, going to ask for more input to make the process a little bit more fluid. The source site is too fluid to make fully automatic." />
-    <option name="LAST_COMMIT_MESSAGE" value="making changes, going to ask for more input to make the process a little bit more fluid. The source site is too fluid to make fully automatic." />
+    <MESSAGE value="works for the most part. Now each item is uploaded directly to shoppify, the only issue is that I havent loaded in any variance, so everything will only have one variant" />
+    <option name="LAST_COMMIT_MESSAGE" value="works for the most part. Now each item is uploaded directly to shoppify, the only issue is that I havent loaded in any variance, so everything will only have one variant" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/Main/functions.py</url>
-          <line>160</line>
-          <option name="timeStamp" value="12" />
+          <line>329</line>
+          <option name="timeStamp" value="38" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Main/functions.py</url>
+          <line>199</line>
+          <option name="timeStamp" value="52" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Main/functions.py</url>
+          <line>140</line>
+          <option name="timeStamp" value="55" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/Main/functions.py</url>
+          <line>166</line>
+          <option name="timeStamp" value="57" />
         </line-breakpoint>
       </breakpoints>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
     </breakpoint-manager>
   </component>
 </project>

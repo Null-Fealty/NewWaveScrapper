@@ -10,6 +10,9 @@ from googletrans import Translator
 from random import randint, choice
 
 import math
+import os
+import requests
+import pyautogui
 import json
 import time
 
@@ -76,6 +79,7 @@ def login_Chrome(driver, gmailId, passWord):
         print('Login Failed')
 
 def prettyRoundCheap(price):
+    price = float(price.replace("$", ""))
     if price < 1:
         price = math.ceil(price * randint(4, 7)) + .99
 
@@ -90,75 +94,99 @@ def prettyRoundCheap(price):
 
     return price
 
-def login_shoppify(driver, user, password, name, price, SKU, weight):
+def loadImages(driver, images):
+    try:
+        for image in images:
+            filename = image.split('/')[-1].split('.')[0] + ".jpg"
+            imgData = requests.get(image).content
+
+            with open(filename, "wb") as f:
+                f.write(imgData)
+
+            filepath = os.path.abspath(filename)
+
+            boxx = WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.XPATH, "//button[@class='dn_ht']")))
+            boxx.click()
+
+            time.sleep(1)
+            pyautogui.write(filepath)
+            time.sleep(1)
+            pyautogui.press('enter')
+            time.sleep(5)
+            os.remove(filename)
+
+    except Exception as e:
+        print(e)
+
+def login_shoppify(driver, user, password, name, price, SKU, weight, images):
     print('in login')
     try:
-        translator = Translator()
         load(driver, ("https://7318a2.myshopify.com/admin/products/new"))
+        try:
+            loginBox = driver.find_element(By.ID, 'account_email')
+            loginBox.send_keys(user)
 
-        loginBox = driver.find_element(By.ID, 'account_email')
-        loginBox.send_keys(user)
+            nextButton = WebDriverWait(driver, 60).until(EC.element_to_be_clickable((By.XPATH, "//button[@name='commit']")))
+            nextButton.click()
 
-        nextButton = WebDriverWait(driver, 60).until(EC.element_to_be_clickable((By.XPATH, "//button[@name='commit']")))
-        nextButton.click()
+            nextButton = driver.find_element(By.ID, "identifierNext")
+            nextButton.click()
 
-        nextButton = driver.find_element(By.ID, "identifierNext")
-        nextButton.click()
+            passWordBox = driver.find_element(By.XPATH, '//*[@id ="password"]/div[1]/div / div[1]/input')
+            passWordBox.send_keys(password)
 
-        passWordBox = driver.find_element(By.XPATH, '//*[@id ="password"]/div[1]/div / div[1]/input')
-        passWordBox.send_keys(password)
-
-        nextButton = driver.find_element(By.XPATH, '//*[@id ="passwordNext"]')
-        nextButton.click()
+            nextButton = driver.find_element(By.XPATH, '//*[@id ="passwordNext"]')
+            nextButton.click()
+        except:
+            print("already logged in")
 
         title = driver.find_element(By.XPATH, '//input[@name="title"][@class="Polaris-TextField__Input_30ock"]')
         title.send_keys(name)
 
-        driver.find_element(By.ID, "magic-popover-activator").click()
-        generate_desc = driver.find_element(By.XPATH, '//textarea[@class="Polaris-TextField__Input_30ock"]')
-        generate_desc.send_keys(name)
+        try:
+            driver.find_element(By.ID, "magic-popover-activator").click()
+            generate_desc = driver.find_element(By.XPATH, '//textarea[@class="Polaris-TextField__Input_30ock"]')
+            generate_desc.send_keys(name)
 
-        driver.find_element(By.XPATH, '//option[@value="playful"]').click()
-        driver.find_element(By.XPATH, "//button[@class='Polaris-Button_r99lw'][@aria-label='Generate text']").click()
+            driver.find_element(By.XPATH, '//option[@value="playful"]').click()
+            driver.find_element(By.XPATH, "//button[@class='Polaris-Button_r99lw'][@aria-label='Generate text']").click()
 
-        desc = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[@class="_TextOutput_r18hq_1"]')))
-        desc = desc.find_element(By.TAG_NAME, "p").text
-        driver.find_element(By.XPATH, "//button[@class='Polaris-Button_r99lw Polaris-Button--primary_7k9zs'][@aria-label='Keep']").click()
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//button[@class='Polaris-Button_r99lw Polaris-Button--primary_7k9zs'][@aria-label='Keep']"))).click()
 
-        # descBox = driver.find_element(By.ID, "richtexteditor_text_area-product-description")
-        # descBox.send_keys(Keys.CONTROL + "a")
-        # descBox.send_keys(translator.translate(desc, dest="es"))
+        except Exception as e:
+            print(e)
 
         priceSellBox = driver.find_element(By.XPATH, '//input[@name="price"]')
-        priceSellBox.send_keys(prettyRoundCheap(float(price.replace("$", ""))))
+        priceSellBox.send_keys(prettyRoundCheap(price))
 
         if choice((True, False)):
             compareAt = driver.find_element(By.XPATH, '//input[@name="compareAtPrice"]')
             compareAt.send_keys(str(randint(math.ceil(float(price.replace("$", ""))) + 5, math.ceil(float(price.replace("$", ""))) + 10) + .99))
 
-        # taxBox = driver.find_element(By.ID, ":r84:")
-        # taxBox.click()
-
         priceCostBox = driver.find_element(By.XPATH, '//input[@name="unitCost"]')
         priceCostBox.send_keys(price)
 
-        driver.find_element(By.XPATH, "//label[@class='Polaris-Choice_j5gzq'][@for='InventoryTrackingTracked']").click()
-
-        for element in driver.find_elements(By.XPATH, '//span[@class="Polaris-Choice__Label_2vd36"]'):
+        for element in driver.find_elements(By.XPATH, "//label[@class='Polaris-Choice_j5gzq Polaris-Checkbox__ChoiceLabel_16hp3']"):
             text = element.find_element(By.TAG_NAME, "span").text
-            if "SKU" in text.split():
-                element.click()
-                break
+            if "SKU" in text.split() or "Track quantity":
+                if element.get_attribute("aria-checked") == "false":
+                    element.click()
+
+            if "Track quantity" in text.split():
+                if element.get_attribute("aria-checked") == "true":
+                    element.click()
 
         skuBox = driver.find_element(By.ID, "InventoryCardSku")
         skuBox.send_keys(SKU)
 
-        weight = driver.find_element(By.XPATH, "//input[@name='weight'][@id='ShippingCardWeight']")
-        weight.send_keys(Keys.CONTROL + Keys.BACKSPACE)
-        weight.send_keys(str(weight))
+        weightBox = driver.find_element(By.XPATH, "//input[@name='weight'][@id='ShippingCardWeight']")
+        weightBox.send_keys(Keys.CONTROL + Keys.BACKSPACE)
+        weightBox.send_keys(str(weight))
 
-        internationalBox = driver.find_element(By.XPATH, "//div[@class='Polaris-LegacyStack_eaeo0 Polaris-LegacyStack--vertical_uiuuj']").find_element(By.CLASS_NAME, "Polaris-Checkbox__Backdrop_1x2i2")
-        internationalBox.click()
+        for i in driver.find_elements(By.XPATH, "//div[@class='Polaris-LegacyStack__Item_yiyol']//label[@class='Polaris-Choice_j5gzq']"):
+            if "Include customs information for international shipping" in i.text:
+                if i.find_element(By.TAG_NAME, "input").get_attribute("aria-checked") == "false":
+                    i.click()
 
         for i in driver.find_element(By.XPATH, "//div[@class='Polaris-LegacyStack_eaeo0 Polaris-LegacyStack--vertical_uiuuj']").find_elements(By.TAG_NAME, "select"):
             if i.get_attribute("id") != "ShippingCardWeightUnit":
@@ -166,14 +194,54 @@ def login_shoppify(driver, user, password, name, price, SKU, weight):
 
         internationalBoxOptions.select_by_value("US")
 
-        hsCode = driver.find_element(By.ID, "ShippingCardHarmonizedSystemCode-Prefix")
-        hsCode.send_keys("6306.90") #clothing
+        time.sleep(1)
+        driver.find_element(By.XPATH, '//input[@name="title"][@class="Polaris-TextField__Input_30ock"]').send_keys("")
 
-        time.sleep(200)
+        loadImages(driver, images)
+
         print("Login Success")
-
     except:
         print("Login Failure")
+
+def addVariant(driver, color, unitPrice, sellprice, first, SKU):
+    for temp in driver.find_elements(By.XPATH, "//div[@class='AnU1b']"):
+        try:
+            currentPrice = float(driver.find_element(By.XPATH, '//input[@name="price"]').get_attribute("value"))
+        except:
+            currentPrice = 0
+        if temp.find_element(By.TAG_NAME, "input").get_attribute("placeholder") == "Add another value" or first == True:# or temp.get_attribute("value") is None:
+            newEntry = temp.find_element(By.TAG_NAME, "input")
+            newEntry.send_keys(color)
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.TAB)
+            if sellprice > currentPrice:
+                driver.find_element(By.XPATH, '//input[@name="price"]').send_keys(sellprice)
+                driver.find_element(By.XPATH, '//input[@name="unitCost"]').send_keys(unitPrice)
+
+
+            # editButton = driver.find_element(By.XPATH, "//button[@aria-label='Edit variant " + color + "']")
+            # editButton.click()
+            #
+            # for i in driver.find_elements(By.XPATH, "//button[@aria-label='Edit variant " + color + "']//input[@name='price']"):
+            #     print(i.get_attribute("placeholder") == "0.00")
+            #     if i.get_attribute("placeholder") == "0.00":
+            #         i.send_keys(str(sellprice))
+            #
+            # for i in driver.find_elements(By.XPATH, "//button[@aria-label='Edit variant " + color + "']//input[@name='unitCost']"):
+            #     if i.get_attribute("placeholder") == "0.00":
+            #         i.send_keys(str(price))
+            #
+            # for i in driver.find_elements(By.XPATH, "//button[@aria-label='Edit variant " + color + "']//input[@name='sku']"):
+            #     if i.get_attribute("value") is None:
+            #         i.send_keys(str(SKU))
+            # print("in")
+            # done = driver.find_element(By.XPATH, "//div[@style='--pc-horizontal-stack-align: space-between; --pc-horizontal-stack-block-align: center; --pc-horizontal-stack-wrap: wrap; --pc-horizontal-stack-gap-xs: var(--p-space-4);']//button[@class='Polaris-Button_r99lw Polaris-Button--primary_7k9zs']//span[@class='Polaris-Button__Text_yj3uv']")
+            # done.click()
+            # print("out")
+            #
+            # time.sleep(1.5)
+            # break
+
+    return
 
 def variantLink(link, itemName, ID):
     try:
@@ -197,7 +265,7 @@ def phase1(driver, category, catName):
         count = 0
 
         for i in elements:
-            if count == 1:
+            if count == 4:
                 break
 
             count += 1
@@ -261,8 +329,9 @@ def phase2(driver, link):
         except:
             print()
 
-        for pic in driver.find_element(By.CLASS_NAME, "product-intro__thumbs-inner").find_elements(By.TAG_NAME, "img"):
-            pictures.append(pic.get_attribute("src"))
+        for pic in driver.find_elements(By.XPATH, "//div[@class='product-intro__thumbs-item']"):
+            pic.click()
+            pictures.append(pic.find_element(By.XPATH, "//div[@class='swiper-slide product-intro__main-item cursor-zoom-in swiper-slide-active']").find_element(By.TAG_NAME, "img").get_attribute("src"))
 
         item["name"] = name
         item[colorName[0]] = colorName[1]
@@ -292,39 +361,634 @@ def phase2(driver, link):
         load(driver, "https://www.google.com")
 
 def main(driver, item, it, weight):
-    # itemList = phase1(driver, item, it)
-    #
-    # itemD = {}
-    # count = 0
-    #
-    # while itemList == -1:
-    #     itemList = phase1(driver, item, it)
-    #
-    # divide()
-    #
-    #
-    # for i in itemList:
-    #     itemD = []
-    #     notify("Currently Getting Details for: " + i["name"])
-    #
-    #     itemD.append(phase2(driver,i["link"]))
-    #
-    #     #finds all variants
-    #     # if len(i["Data ID"]) > 0:
-    #     #     for id in i["Data ID"]:
-    #     #         itemD[i["name"]].append(phase2(driver, variantLink(i["link"],i["name"],id)))
-    #     # else:
-    #     #     itemD[i["name"]].append(phase2(driver,i["link"]))
-    #
-    #     divide()
-    #     count += 1
-    #     notify(str(count) + "/" + str(len(itemList)))
-    itemD = [{'name': 'Eyelet Embroidery Batwing Sleeve Tee', 'Color': 'Redwood', 'SKU': 'sw2302089539602212', 'price': '$4.76', 'pictures': ['https://img.ltwebstatic.com/images3_pi/2023/02/15/1676453841d5ddb07116e314c790dcf7c0be5c1b52_thumbnail_220x293_thumbnail_80x.webp', 'https://img.ltwebstatic.com/images3_pi/2023/02/15/1676453844ee76b304267b2042f0022a2483d1e54d_thumbnail_220x293_thumbnail_80x.webp', 'https://img.ltwebstatic.com/images3_pi/2023/02/15/1676453849144bea239c5a90f329ef60d2cc8c7dcd_thumbnail_220x293_thumbnail_80x.webp', 'https://img.ltwebstatic.com/images3_pi/2023/02/15/167645385257762b5bf58a448c9e683ccb8936602f_thumbnail_220x293_thumbnail_80x.webp', 'https://img.ltwebstatic.com/images3_pi/2023/02/15/1676453854a8d8eb44f83b7a6882d59e2fdc526150_thumbnail_220x293_thumbnail_80x.webp', 'https://img.ltwebstatic.com/images3_pi/2023/02/15/167645385257762b5bf58a448c9e683ccb8936602f_thumbnail_80x.webp'], 'link': 'https://us.shein.com/Eyelet-Embroidery-Batwing-Sleeve-Tee-p-13138402-cat-1738.html?src_identifier=on%3DIMAGE_COMPONENT%60cn%3Dcat%60hz%3DhotZone_18%60ps%3D4_11%60jc%3Dreal_2030&src_module=Women&src_tab_page_id=page_home1687798867022&mallCode=1', 'sizes': {'4': '(S)', '6': '(M)', '8/10': '(L)', '12': '(XL)'}, 'colorPic': '//img.ltwebstatic.com/images3_pi/2023/02/15/16764538589dd366e6a56b397411ff87d1e8621339.webp'}]
-    print(itemD)
-    for item in itemD:
-        login_shoppify(driver, "thenewwaveaesthetic@gmail.com", "Stormthec@stl3", item["name"].replace("SHEIN", "New Wave"), item["price"], item["SKU"], weight)
-    return
+    itemList = phase1(driver, item, it)
+    print(itemList)
+
+    itemD = {}
+    count = 0
+
+    while itemList == -1:
+        itemList = phase1(driver, item, it)
 
     divide()
 
-    time.sleep(1000)
+    for i in itemList:
+        notify("Currently Getting Details for: " + i["name"])
+
+        item = phase2(driver,i["link"])
+
+        login_shoppify(driver, "thenewwaveaesthetic@gmail.com", "Stormthec@stl3", item["name"].replace("SHEIN", "New Wave"), item["price"], item["SKU"], weight, item["pictures"])
+
+        if len(i["Data ID"]) >= 0:
+            addButton = driver.find_element(By.XPATH, "//span[@class='vNeOG']")
+            addButton.click()
+
+            variantBox = driver.find_element(By.XPATH, "//div[@class='e157U']").find_element(By.TAG_NAME, "input")
+            variantBox.send_keys("Color")
+
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.TAB)
+
+            temp = []
+            for id in i["Data ID"]:
+                variant = phase2(driver, variantLink(i["link"], i["name"], id))
+                addVariant(driver, variant["Color"], variant["price"], prettyRoundCheap(variant["price"]), variant["SKU"])
+                loadImages(driver, variant["pictures"])
+
+        divide()
+        count += 1
+        notify(str(count) + "/" + str(len(itemList)))
+
+    # print(itemD)
+    #
+    # itemD = [
+    #     {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'White', 'SKU': 'sw2202160411077223', 'price': '$3.99',
+    #      'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914354b21656b79db4d2d96b00994c758e93c8_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914361dfc0a57e70d017d3bf28284d96427388_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143594e3b80233a07eac36080eb3b586dda71_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143639d242b16becdca7e153cf78c50f927e4_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2023/07/05/1688563540798ed98685ea875bbf32adb97a7cf2d4_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/11/09/1667955985c548d35366c04c859a51df2c4e2a124b_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp'],
+    #      'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10079191-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #      'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #      'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/22/1647914366f6485a9111b460d3303e0337148259f9.webp'},
+    #     [
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'White', 'SKU': 'sw2202160411077223',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914354b21656b79db4d2d96b00994c758e93c8_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914361dfc0a57e70d017d3bf28284d96427388_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143594e3b80233a07eac36080eb3b586dda71_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143639d242b16becdca7e153cf78c50f927e4_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/05/1688563540798ed98685ea875bbf32adb97a7cf2d4_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/11/09/1667955985c548d35366c04c859a51df2c4e2a124b_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10079191-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/22/1647914366f6485a9111b460d3303e0337148259f9.webp'},
+    #         {'name': 'SHEIN BASICS Solid Round Neck Slim Tee', 'Color': 'Maroon', 'SKU': 'sw2202160411085833',
+    #          'price': '$4.49', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/1647841928741c0ca1702d0b739132999c9b4297f9_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419331e4c778441957dfe644cea46af2d1296_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419359176ec45434382e9e739ff8fc8c98276_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10069281-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/21/16478419381d5b2c61653a114f63e57eea56eed315.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Black', 'SKU': 'sw2202160411088321',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908791c93a7e013f4a200f8bde9bd714447e8_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/164869088119e7fe510cc94f6c46d6e9c4742303e0_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/1648690883c0a1513a3e5331384704d7ee4e3e83cc_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908855b523bbffa92165cd887ee1a0b083a07_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10179239-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/31/1648690888c843d2154afff492cc3edb0b270fdf3c.webp'},
+    #         {'name': 'SHEIN BASICS Cap Sleeve Solid Crop Top', 'Color': 'Lilac', 'SKU': 'sS2012140040195252',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217481176504f5b8e762b2a6c1ecab3d466161_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174853cc203bb2659dcbfd49f4829a48e1780_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174878f45a4636477929b16ead7ced3d8cc99_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217483432b1fdb8edb3f7df1903018ddab9560_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217489e656f30bdd4c2bed5661fdba5d658e3a_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10447828-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/04/29/16512174923467c6e083c086528ab765d344f60111.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Blue', 'SKU': 'sw2204246799905548',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534562985e09524a2e4603235a668139e8435494_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/165345630307e4b2c816671d10fb01019ce3675d73_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563057c9a3fd7b509b82061c4f4c1e3514f88_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653456307e6c526e7bb1b24873da7362f2bb1f5ed_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660054-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653456310a7f5dfb45f519c11ec583842223726ba.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mustard', 'SKU': 'sw2204246799954958',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459262cbe98e0280d867a3a3c8821581b507d2_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592666271ed625c276d375ddfa62071700b3b_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459269421609d831a4b6a59f6299da6f7d3f78_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592715fdd749673940c6bfbbca85d1cc616af_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459273684a833544b77bb55a33be0b305858c9_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660174-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653459276226bfeb9c0e99278fea54f0c601bcb96.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mocha', 'SKU': 'sw2204246799959954',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537351b97ed94452d5d41e079d8c14e75d8783_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/165353735686188621feb58e135d68825c67314a40_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/16535373530412ad04e803c7d7f0e8eb93a4f97445_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537359baced4e93ad6576b1d34f52a9db37d27_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10673185-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/26/1653537362d909b80e00fb14aa42dcd00dd4a63305.webp'}],
+    #     [{'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'White', 'SKU': 'sw2202160411077223', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914354b21656b79db4d2d96b00994c758e93c8_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914361dfc0a57e70d017d3bf28284d96427388_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143594e3b80233a07eac36080eb3b586dda71_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143639d242b16becdca7e153cf78c50f927e4_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/05/1688563540798ed98685ea875bbf32adb97a7cf2d4_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/11/09/1667955985c548d35366c04c859a51df2c4e2a124b_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10079191-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/22/1647914366f6485a9111b460d3303e0337148259f9.webp'},
+    #      {'name': 'SHEIN BASICS Solid Round Neck Slim Tee', 'Color': 'Maroon', 'SKU': 'sw2202160411085833',
+    #       'price': '$4.49', 'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/1647841928741c0ca1702d0b739132999c9b4297f9_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419331e4c778441957dfe644cea46af2d1296_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419359176ec45434382e9e739ff8fc8c98276_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10069281-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/21/16478419381d5b2c61653a114f63e57eea56eed315.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Black', 'SKU': 'sw2202160411088321', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908791c93a7e013f4a200f8bde9bd714447e8_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/164869088119e7fe510cc94f6c46d6e9c4742303e0_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/1648690883c0a1513a3e5331384704d7ee4e3e83cc_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908855b523bbffa92165cd887ee1a0b083a07_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10179239-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/31/1648690888c843d2154afff492cc3edb0b270fdf3c.webp'},
+    #      {'name': 'SHEIN BASICS Cap Sleeve Solid Crop Top', 'Color': 'Lilac', 'SKU': 'sS2012140040195252',
+    #       'price': '$3.99', 'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217481176504f5b8e762b2a6c1ecab3d466161_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174853cc203bb2659dcbfd49f4829a48e1780_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174878f45a4636477929b16ead7ced3d8cc99_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217483432b1fdb8edb3f7df1903018ddab9560_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217489e656f30bdd4c2bed5661fdba5d658e3a_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10447828-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/04/29/16512174923467c6e083c086528ab765d344f60111.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Blue', 'SKU': 'sw2204246799905548', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534562985e09524a2e4603235a668139e8435494_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/165345630307e4b2c816671d10fb01019ce3675d73_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563057c9a3fd7b509b82061c4f4c1e3514f88_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653456307e6c526e7bb1b24873da7362f2bb1f5ed_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660054-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653456310a7f5dfb45f519c11ec583842223726ba.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mustard', 'SKU': 'sw2204246799954958',
+    #       'price': '$3.99', 'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459262cbe98e0280d867a3a3c8821581b507d2_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592666271ed625c276d375ddfa62071700b3b_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459269421609d831a4b6a59f6299da6f7d3f78_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592715fdd749673940c6bfbbca85d1cc616af_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459273684a833544b77bb55a33be0b305858c9_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660174-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653459276226bfeb9c0e99278fea54f0c601bcb96.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mocha', 'SKU': 'sw2204246799959954', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537351b97ed94452d5d41e079d8c14e75d8783_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/165353735686188621feb58e135d68825c67314a40_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/16535373530412ad04e803c7d7f0e8eb93a4f97445_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537359baced4e93ad6576b1d34f52a9db37d27_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10673185-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/26/1653537362d909b80e00fb14aa42dcd00dd4a63305.webp'}], [
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'White', 'SKU': 'sw2202160411077223',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914354b21656b79db4d2d96b00994c758e93c8_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914361dfc0a57e70d017d3bf28284d96427388_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143594e3b80233a07eac36080eb3b586dda71_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143639d242b16becdca7e153cf78c50f927e4_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/05/1688563540798ed98685ea875bbf32adb97a7cf2d4_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/11/09/1667955985c548d35366c04c859a51df2c4e2a124b_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10079191-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/22/1647914366f6485a9111b460d3303e0337148259f9.webp'},
+    #         {'name': 'SHEIN BASICS Solid Round Neck Slim Tee', 'Color': 'Maroon', 'SKU': 'sw2202160411085833',
+    #          'price': '$4.49', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/1647841928741c0ca1702d0b739132999c9b4297f9_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419331e4c778441957dfe644cea46af2d1296_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419359176ec45434382e9e739ff8fc8c98276_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10069281-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/21/16478419381d5b2c61653a114f63e57eea56eed315.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Black', 'SKU': 'sw2202160411088321',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908791c93a7e013f4a200f8bde9bd714447e8_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/164869088119e7fe510cc94f6c46d6e9c4742303e0_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/1648690883c0a1513a3e5331384704d7ee4e3e83cc_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908855b523bbffa92165cd887ee1a0b083a07_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10179239-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/31/1648690888c843d2154afff492cc3edb0b270fdf3c.webp'},
+    #         {'name': 'SHEIN BASICS Cap Sleeve Solid Crop Top', 'Color': 'Lilac', 'SKU': 'sS2012140040195252',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217481176504f5b8e762b2a6c1ecab3d466161_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174853cc203bb2659dcbfd49f4829a48e1780_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174878f45a4636477929b16ead7ced3d8cc99_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217483432b1fdb8edb3f7df1903018ddab9560_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217489e656f30bdd4c2bed5661fdba5d658e3a_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10447828-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/04/29/16512174923467c6e083c086528ab765d344f60111.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Blue', 'SKU': 'sw2204246799905548',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534562985e09524a2e4603235a668139e8435494_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/165345630307e4b2c816671d10fb01019ce3675d73_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563057c9a3fd7b509b82061c4f4c1e3514f88_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653456307e6c526e7bb1b24873da7362f2bb1f5ed_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660054-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653456310a7f5dfb45f519c11ec583842223726ba.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mustard', 'SKU': 'sw2204246799954958',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459262cbe98e0280d867a3a3c8821581b507d2_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592666271ed625c276d375ddfa62071700b3b_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459269421609d831a4b6a59f6299da6f7d3f78_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592715fdd749673940c6bfbbca85d1cc616af_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459273684a833544b77bb55a33be0b305858c9_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660174-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653459276226bfeb9c0e99278fea54f0c601bcb96.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mocha', 'SKU': 'sw2204246799959954',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537351b97ed94452d5d41e079d8c14e75d8783_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/165353735686188621feb58e135d68825c67314a40_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/16535373530412ad04e803c7d7f0e8eb93a4f97445_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537359baced4e93ad6576b1d34f52a9db37d27_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10673185-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/26/1653537362d909b80e00fb14aa42dcd00dd4a63305.webp'}],
+    #     [{'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'White', 'SKU': 'sw2202160411077223', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914354b21656b79db4d2d96b00994c758e93c8_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914361dfc0a57e70d017d3bf28284d96427388_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143594e3b80233a07eac36080eb3b586dda71_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143639d242b16becdca7e153cf78c50f927e4_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/05/1688563540798ed98685ea875bbf32adb97a7cf2d4_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/11/09/1667955985c548d35366c04c859a51df2c4e2a124b_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10079191-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/22/1647914366f6485a9111b460d3303e0337148259f9.webp'},
+    #      {'name': 'SHEIN BASICS Solid Round Neck Slim Tee', 'Color': 'Maroon', 'SKU': 'sw2202160411085833',
+    #       'price': '$4.49', 'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/1647841928741c0ca1702d0b739132999c9b4297f9_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419331e4c778441957dfe644cea46af2d1296_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419359176ec45434382e9e739ff8fc8c98276_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10069281-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/21/16478419381d5b2c61653a114f63e57eea56eed315.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Black', 'SKU': 'sw2202160411088321', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908791c93a7e013f4a200f8bde9bd714447e8_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/164869088119e7fe510cc94f6c46d6e9c4742303e0_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/1648690883c0a1513a3e5331384704d7ee4e3e83cc_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908855b523bbffa92165cd887ee1a0b083a07_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10179239-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/31/1648690888c843d2154afff492cc3edb0b270fdf3c.webp'},
+    #      {'name': 'SHEIN BASICS Cap Sleeve Solid Crop Top', 'Color': 'Lilac', 'SKU': 'sS2012140040195252',
+    #       'price': '$3.99', 'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217481176504f5b8e762b2a6c1ecab3d466161_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174853cc203bb2659dcbfd49f4829a48e1780_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174878f45a4636477929b16ead7ced3d8cc99_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217483432b1fdb8edb3f7df1903018ddab9560_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217489e656f30bdd4c2bed5661fdba5d658e3a_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10447828-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/04/29/16512174923467c6e083c086528ab765d344f60111.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Blue', 'SKU': 'sw2204246799905548', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534562985e09524a2e4603235a668139e8435494_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/165345630307e4b2c816671d10fb01019ce3675d73_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563057c9a3fd7b509b82061c4f4c1e3514f88_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653456307e6c526e7bb1b24873da7362f2bb1f5ed_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660054-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653456310a7f5dfb45f519c11ec583842223726ba.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mustard', 'SKU': 'sw2204246799954958',
+    #       'price': '$3.99', 'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459262cbe98e0280d867a3a3c8821581b507d2_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592666271ed625c276d375ddfa62071700b3b_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459269421609d831a4b6a59f6299da6f7d3f78_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592715fdd749673940c6bfbbca85d1cc616af_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459273684a833544b77bb55a33be0b305858c9_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660174-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653459276226bfeb9c0e99278fea54f0c601bcb96.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mocha', 'SKU': 'sw2204246799959954', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537351b97ed94452d5d41e079d8c14e75d8783_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/165353735686188621feb58e135d68825c67314a40_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/16535373530412ad04e803c7d7f0e8eb93a4f97445_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537359baced4e93ad6576b1d34f52a9db37d27_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10673185-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/26/1653537362d909b80e00fb14aa42dcd00dd4a63305.webp'}], [
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'White', 'SKU': 'sw2202160411077223',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914354b21656b79db4d2d96b00994c758e93c8_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914361dfc0a57e70d017d3bf28284d96427388_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143594e3b80233a07eac36080eb3b586dda71_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143639d242b16becdca7e153cf78c50f927e4_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/05/1688563540798ed98685ea875bbf32adb97a7cf2d4_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/11/09/1667955985c548d35366c04c859a51df2c4e2a124b_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10079191-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/22/1647914366f6485a9111b460d3303e0337148259f9.webp'},
+    #         {'name': 'SHEIN BASICS Solid Round Neck Slim Tee', 'Color': 'Maroon', 'SKU': 'sw2202160411085833',
+    #          'price': '$4.49', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/1647841928741c0ca1702d0b739132999c9b4297f9_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419331e4c778441957dfe644cea46af2d1296_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419359176ec45434382e9e739ff8fc8c98276_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10069281-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/21/16478419381d5b2c61653a114f63e57eea56eed315.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Black', 'SKU': 'sw2202160411088321',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908791c93a7e013f4a200f8bde9bd714447e8_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/164869088119e7fe510cc94f6c46d6e9c4742303e0_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/1648690883c0a1513a3e5331384704d7ee4e3e83cc_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908855b523bbffa92165cd887ee1a0b083a07_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10179239-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/31/1648690888c843d2154afff492cc3edb0b270fdf3c.webp'},
+    #         {'name': 'SHEIN BASICS Cap Sleeve Solid Crop Top', 'Color': 'Lilac', 'SKU': 'sS2012140040195252',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217481176504f5b8e762b2a6c1ecab3d466161_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174853cc203bb2659dcbfd49f4829a48e1780_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174878f45a4636477929b16ead7ced3d8cc99_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217483432b1fdb8edb3f7df1903018ddab9560_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217489e656f30bdd4c2bed5661fdba5d658e3a_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10447828-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/04/29/16512174923467c6e083c086528ab765d344f60111.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Blue', 'SKU': 'sw2204246799905548',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534562985e09524a2e4603235a668139e8435494_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/165345630307e4b2c816671d10fb01019ce3675d73_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563057c9a3fd7b509b82061c4f4c1e3514f88_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653456307e6c526e7bb1b24873da7362f2bb1f5ed_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660054-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653456310a7f5dfb45f519c11ec583842223726ba.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mustard', 'SKU': 'sw2204246799954958',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459262cbe98e0280d867a3a3c8821581b507d2_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592666271ed625c276d375ddfa62071700b3b_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459269421609d831a4b6a59f6299da6f7d3f78_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592715fdd749673940c6bfbbca85d1cc616af_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459273684a833544b77bb55a33be0b305858c9_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660174-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653459276226bfeb9c0e99278fea54f0c601bcb96.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mocha', 'SKU': 'sw2204246799959954',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537351b97ed94452d5d41e079d8c14e75d8783_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/165353735686188621feb58e135d68825c67314a40_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/16535373530412ad04e803c7d7f0e8eb93a4f97445_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537359baced4e93ad6576b1d34f52a9db37d27_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10673185-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/26/1653537362d909b80e00fb14aa42dcd00dd4a63305.webp'}],
+    #     [{'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'White', 'SKU': 'sw2202160411077223', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914354b21656b79db4d2d96b00994c758e93c8_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914361dfc0a57e70d017d3bf28284d96427388_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143594e3b80233a07eac36080eb3b586dda71_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143639d242b16becdca7e153cf78c50f927e4_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/05/1688563540798ed98685ea875bbf32adb97a7cf2d4_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/11/09/1667955985c548d35366c04c859a51df2c4e2a124b_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10079191-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/22/1647914366f6485a9111b460d3303e0337148259f9.webp'},
+    #      {'name': 'SHEIN BASICS Solid Round Neck Slim Tee', 'Color': 'Maroon', 'SKU': 'sw2202160411085833',
+    #       'price': '$4.49', 'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/1647841928741c0ca1702d0b739132999c9b4297f9_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419331e4c778441957dfe644cea46af2d1296_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419359176ec45434382e9e739ff8fc8c98276_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10069281-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/21/16478419381d5b2c61653a114f63e57eea56eed315.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Black', 'SKU': 'sw2202160411088321', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908791c93a7e013f4a200f8bde9bd714447e8_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/164869088119e7fe510cc94f6c46d6e9c4742303e0_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/1648690883c0a1513a3e5331384704d7ee4e3e83cc_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908855b523bbffa92165cd887ee1a0b083a07_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10179239-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/31/1648690888c843d2154afff492cc3edb0b270fdf3c.webp'},
+    #      {'name': 'SHEIN BASICS Cap Sleeve Solid Crop Top', 'Color': 'Lilac', 'SKU': 'sS2012140040195252',
+    #       'price': '$3.99', 'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217481176504f5b8e762b2a6c1ecab3d466161_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174853cc203bb2659dcbfd49f4829a48e1780_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174878f45a4636477929b16ead7ced3d8cc99_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217483432b1fdb8edb3f7df1903018ddab9560_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217489e656f30bdd4c2bed5661fdba5d658e3a_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10447828-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/04/29/16512174923467c6e083c086528ab765d344f60111.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Blue', 'SKU': 'sw2204246799905548', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534562985e09524a2e4603235a668139e8435494_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/165345630307e4b2c816671d10fb01019ce3675d73_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563057c9a3fd7b509b82061c4f4c1e3514f88_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653456307e6c526e7bb1b24873da7362f2bb1f5ed_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660054-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653456310a7f5dfb45f519c11ec583842223726ba.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mustard', 'SKU': 'sw2204246799954958',
+    #       'price': '$3.99', 'pictures': [
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459262cbe98e0280d867a3a3c8821581b507d2_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592666271ed625c276d375ddfa62071700b3b_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459269421609d831a4b6a59f6299da6f7d3f78_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592715fdd749673940c6bfbbca85d1cc616af_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459273684a833544b77bb55a33be0b305858c9_thumbnail_600x.webp',
+    #          'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660174-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653459276226bfeb9c0e99278fea54f0c601bcb96.webp'},
+    #      {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mocha', 'SKU': 'sw2204246799959954', 'price': '$3.99',
+    #       'pictures': [
+    #           'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537351b97ed94452d5d41e079d8c14e75d8783_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/165353735686188621feb58e135d68825c67314a40_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/16535373530412ad04e803c7d7f0e8eb93a4f97445_thumbnail_600x.webp',
+    #           'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537359baced4e93ad6576b1d34f52a9db37d27_thumbnail_600x.webp'],
+    #       'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10673185-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #       'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #       'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/26/1653537362d909b80e00fb14aa42dcd00dd4a63305.webp'}], [
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'White', 'SKU': 'sw2202160411077223',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914354b21656b79db4d2d96b00994c758e93c8_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/1647914361dfc0a57e70d017d3bf28284d96427388_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143594e3b80233a07eac36080eb3b586dda71_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/16479143639d242b16becdca7e153cf78c50f927e4_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/05/1688563540798ed98685ea875bbf32adb97a7cf2d4_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/11/09/1667955985c548d35366c04c859a51df2c4e2a124b_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/22/164791435684e49e16f7280b077fb3170300567987_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10079191-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/22/1647914366f6485a9111b460d3303e0337148259f9.webp'},
+    #         {'name': 'SHEIN BASICS Solid Round Neck Slim Tee', 'Color': 'Maroon', 'SKU': 'sw2202160411085833',
+    #          'price': '$4.49', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/1647841928741c0ca1702d0b739132999c9b4297f9_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419331e4c778441957dfe644cea46af2d1296_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419359176ec45434382e9e739ff8fc8c98276_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/21/16478419319aae8f33de6a854bc8a090228cc63f30_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10069281-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/21/16478419381d5b2c61653a114f63e57eea56eed315.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Black', 'SKU': 'sw2202160411088321',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908791c93a7e013f4a200f8bde9bd714447e8_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/164869088119e7fe510cc94f6c46d6e9c4742303e0_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/1648690883c0a1513a3e5331384704d7ee4e3e83cc_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/03/31/16486908855b523bbffa92165cd887ee1a0b083a07_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10179239-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/03/31/1648690888c843d2154afff492cc3edb0b270fdf3c.webp'},
+    #         {'name': 'SHEIN BASICS Cap Sleeve Solid Crop Top', 'Color': 'Lilac', 'SKU': 'sS2012140040195252',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217481176504f5b8e762b2a6c1ecab3d466161_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174853cc203bb2659dcbfd49f4829a48e1780_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/16512174878f45a4636477929b16ead7ced3d8cc99_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217483432b1fdb8edb3f7df1903018ddab9560_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/04/29/1651217489e656f30bdd4c2bed5661fdba5d658e3a_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10447828-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/04/29/16512174923467c6e083c086528ab765d344f60111.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Blue', 'SKU': 'sw2204246799905548',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534562985e09524a2e4603235a668139e8435494_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/165345630307e4b2c816671d10fb01019ce3675d73_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563057c9a3fd7b509b82061c4f4c1e3514f88_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653456307e6c526e7bb1b24873da7362f2bb1f5ed_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534563006c4fb98d729de7c7386c71ad40bd64a0_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660054-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653456310a7f5dfb45f519c11ec583842223726ba.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mustard', 'SKU': 'sw2204246799954958',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459262cbe98e0280d867a3a3c8821581b507d2_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592666271ed625c276d375ddfa62071700b3b_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459269421609d831a4b6a59f6299da6f7d3f78_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/16534592715fdd749673940c6bfbbca85d1cc616af_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459273684a833544b77bb55a33be0b305858c9_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/25/1653459265f8ed194a73758397bfc6e6d58ab0371d_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10660174-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/25/1653459276226bfeb9c0e99278fea54f0c601bcb96.webp'},
+    #         {'name': 'SHEIN BASICS Solid Form Fitted Tee', 'Color': 'Mocha', 'SKU': 'sw2204246799959954',
+    #          'price': '$3.99', 'pictures': [
+    #             'https://img.ltwebstatic.com/images3_pi/2023/07/08/1688801384e4c699359773006e670a396a5e64c57f_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537351b97ed94452d5d41e079d8c14e75d8783_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/165353735686188621feb58e135d68825c67314a40_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/16535373530412ad04e803c7d7f0e8eb93a4f97445_thumbnail_600x.webp',
+    #             'https://img.ltwebstatic.com/images3_pi/2022/05/26/1653537359baced4e93ad6576b1d34f52a9db37d27_thumbnail_600x.webp'],
+    #          'link': 'https://us.shein.com/SHEIN-BASICS-Solid-Form-Fitted-Tee-p-10673185-cat-1738.html?src_identifier=fc%3DWomen%60sc%3DTOPS%60tc%3D0%60oc%3D0%60ps%3Dtab01navbar07%60jc%3Dreal_1766&src_module=topcat&src_tab_page_id=page_home1688049567200&mallCode=1',
+    #          'sizes': {'2': '(XS)', '4': '(S)', '6': '(M)', '8/10': '(L)'},
+    #          'colorPic': '//img.ltwebstatic.com/images3_pi/2022/05/26/1653537362d909b80e00fb14aa42dcd00dd4a63305.webp'}]]
+    #
+    # for item in itemD:
+    #     if isinstance(item, dict):
+    #         login_shoppify(driver, "thenewwaveaesthetic@gmail.com", "Stormthec@stl3", item["name"].replace("SHEIN", "New Wave"), item["price"], item["SKU"], weight, item["pictures"])
+    #
+    #     elif isinstance(item, list):
+    #         first = True
+    #
+    #         login_shoppify(driver, "thenewwaveaesthetic@gmail.com", "Stormthec@stl3", item[0]["name"].replace("SHEIN", "New Wave"), item[0]["price"], item[0]["SKU"], weight, item[0]["pictures"])
+    #
+    #         addButton = driver.find_element(By.XPATH, "//span[@class='vNeOG']")
+    #         addButton.click()
+    #
+    #         variantBox = driver.find_element(By.XPATH, "//div[@class='e157U']").find_element(By.TAG_NAME, "input")
+    #         variantBox.send_keys("Color")
+    #
+    #         driver.find_element(By.TAG_NAME, "body").send_keys(Keys.TAB)
+    #
+    #         for variant in item:
+    #             addVariant(driver, variant["Color"], variant["price"], prettyRoundCheap(variant["price"]), first, variant["SKU"])
+    #             # loadImages(driver, variant["pictures"])
+    #             first = False
+    #             print('--__________--')
+
+        for x in driver.find_elements(By.XPATH, "//div[@class='Polaris-LegacyStack__Item_yiyol']//button"):
+            if x.get_attribute("aria-label") == "Save":
+                x.click()
+                break
+
+    return
